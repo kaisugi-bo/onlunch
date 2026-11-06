@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>オンランチ食券機</title>
+<meta name="description" content="ボタンを押すたびにオンランチの話題が1つ出る、全60問・5メニューの話題アプリ。">
+<meta name="theme-color" content="#7724EB">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="オンランチ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* 1カラム。メニュー → 話題カード → ボタン の順に置くだけ */
+:root {
+  --bg: #FFFFFF; --fg: #1C1F26; --sub: #6B7080; --line: #E4E6EB; --soft: #F4F5F7;
+  --accent: #7724EB; --accent-fg: #FFFFFF;
+  --font: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15171C; --fg: #ECEEF2; --sub: #9CA1AE; --line: #2C2F38; --soft: #1E2128; --accent: #9A5CF6; --accent-fg: #FFFFFF; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15171C; --fg: #ECEEF2; --sub: #9CA1AE; --line: #2C2F38; --soft: #1E2128; --accent: #9A5CF6; --accent-fg: #FFFFFF; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: calc(env(safe-area-inset-top, 0px) + 32px) calc(env(safe-area-inset-bottom, 0px) + 40px); }
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+h1 { margin: 0; font-size: 20px; font-weight: 700; }
+.lead { margin: 2px 0 0; color: var(--sub); font-size: 13.5px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font); font-size: 13px; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--sub); border-radius: 999px; padding: 4px 13px; }
+.chip:hover { color: var(--fg); }
+.chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px 22px; min-height: 210px; display: flex; flex-direction: column; gap: 10px; }
+.meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.topic { margin: 0; flex: 1; display: flex; align-items: center; font-size: clamp(24px, 5.2vw, 36px); font-weight: 700; line-height: 1.5; text-wrap: balance; word-break: auto-phrase; transition: opacity .18s; }
+.topic.fade { opacity: 0; }
+
+.next { font-family: var(--font); font-size: 17px; font-weight: 700; cursor: pointer; border: none; border-radius: 12px; padding: 15px 16px; background: var(--accent); color: var(--accent-fg); }
+.next:hover { filter: brightness(1.07); }
+.next:active { transform: translateY(1px); }
+.row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--sub); margin-top: -8px; }
+.row .links { display: flex; gap: 18px; }
+.link { background: none; border: none; padding: 4px 0; font-family: var(--font); font-size: 13px; color: var(--sub); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--fg); }
+.link:disabled { opacity: .4; cursor: default; text-decoration: none; }
+.left { font-variant-numeric: tabular-nums; }
+
+.hist h2 { margin: 0 0 4px; font-size: 12.5px; font-weight: 500; color: var(--sub); }
+.hist ol { list-style: none; margin: 0; padding: 0; }
+.hist li button { width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--line); padding: 8px 0; font-family: var(--font); font-size: 14px; color: var(--sub); cursor: pointer; }
+.hist li button:hover, .hist li button[aria-current="true"] { color: var(--fg); }
+
+footer { font-size: 12.5px; color: var(--sub); }
+footer p { margin: 0; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .topic { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>オンランチ食券機</h1>
+    <p class="lead">ボタンを押すと話題が1つ出ます。ピンとこなければ、どんどん次へ。</p>
+  </header>
+
+  <div class="chips" id="chips" aria-label="メニュー"></div>
+
+  <article class="card" aria-live="polite">
+    <div class="meta"><span id="cat">日替わり</span><span id="no">No.1</span></div>
+    <p class="topic" id="topic">今日のお昼ごはん、何？</p>
+  </article>
+
+  <button class="next" id="next" type="button">次の話題</button>
+  <div class="row">
+    <div class="links">
+      <button class="link" id="back" type="button" disabled>ひとつ前に戻る</button>
+      <button class="link" id="reset" type="button">出た話題をリセット</button>
+    </div>
+    <span class="left" id="left"></span>
+  </div>
+
+  <section class="hist" id="hist" hidden>
+    <h2>この回で出た話題</h2>
+    <ol id="histlist"></ol>
+  </section>
+
+  <footer>
+    <p>話が広がったら、そのまま放置してください。スペースキーでも次の話題を出せます。</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+const MENU = [
+  { k: "day", name: "日替わり" }, { k: "fav", name: "定番" }, { k: "if", name: "もしも" }, { k: "ab", name: "どっち派" }, { k: "old", name: "むかし話" }
+];
+const TOPICS = {
+  day: ["今日のお昼ごはん、何？", "最近ちょっと得したこと", "最近いちばん笑ったこと", "最近変えた小さな習慣", "今年のうちにやっておきたいこと", "冬になると必ずすること・食べるもの",
+    "年末年始の過ごし方、もう決まってる？", "最近気になっているお店や場所", "最近知ったちょっとした雑学", "最近、自分をほめたいこと", "最近始めたこと、またはやめたこと", "この1週間でいちばんおいしかったもの"],
+  fav: ["何度でも聴いてしまう曲", "冷蔵庫に必ず入っているもの", "つい買ってしまうコンビニの定番", "休みの日の朝ごはん", "家の中でいちばん好きな場所", "自分なりのストレス解消法",
+    "1,000円以下で買ってよかったもの", "人に言うと驚かれる小さなこだわり", "好きな季節と、その理由", "地元の名物で、人に自慢したいもの", "自分の住んでいる地域の「あるある」", "理想の休日を時間割で言うと？"],
+  if: ["1か月だけ別の国に住めるなら、どこ？", "好きな作品の世界に1日だけ入れるなら、どれ？", "明日から特技を1つもらえるなら、何がいい？", "1日だけ動物になれるなら、何になる？", "無人島に1つだけ持っていくなら？", "人生のテーマ曲を1曲選ぶなら？",
+    "タイムマシンに1回乗れるなら、過去と未来どっちに行く？", "1年間、毎日同じものを食べるなら何にする？", "家にもう1部屋増やせるなら、何の部屋にする？", "1週間まるごと休みがもらえたら、何をする？", "好きなものだけで1日のテレビ番組表を作るなら？", "魔法が1つだけ使えるなら、どんな魔法？"],
+  ab: ["朝型？夜型？", "旅行は計画派？行き当たりばったり派？", "山と海、行くならどっち？", "映画は映画館派？家派？", "好きなものは最初に食べる？最後に残す？", "犬派？猫派？それ以外？",
+    "紙の本と電子書籍、どっち派？", "住むなら都会と田舎、どっち？", "連休は家でゆっくり派？出かける派？", "目玉焼きには何をかける？", "お風呂は朝派？夜派？", "きのこの山派？たけのこの里派？"],
+  old: ["子どものころの得意技", "給食で好きだったメニュー", "小学生のころの将来の夢", "子どものころ、よくやっていた遊び", "修学旅行で覚えていること", "学生時代にハマっていたもの",
+    "昔住んでいた街で、また行きたいお店", "忘れられない旅先のごはん", "子どものころ苦手だった食べ物、今は？", "初めて自分で選んで買ったCD・本・ゲーム", "初めて持ったケータイやスマホ、覚えてる？", "夏休みの思い出で、いちばん覚えていること"]
+};
+const ALL = MENU.flatMap(m => TOPICS[m.k].map(t => ({ t, c: m.k })));
+const nameOf = Object.fromEntries(MENU.map(m => [m.k, m.name]));
+
+// 出た話題はこの端末にだけ覚えておく（使えなければ覚えずに動く）
+const KEY = "onlunch-kenbaiki.seen.v1";
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} };
+let seen = load(), filter = "all", history = [], cursor = -1, no = 1;
+const $ = id => document.getElementById(id);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+$("chips").innerHTML = [{ k: "all", name: "ぜんぶ" }, ...MENU].map(m => `<button class="chip" type="button" data-k="${m.k}" aria-pressed="${m.k === filter}">${m.name}</button>`).join("");
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  filter = b.dataset.k;
+  document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  updateLeft();
+});
+
+const pool = () => ALL.filter(x => filter === "all" || x.c === filter);
+function updateLeft() { const p = pool(); $("left").textContent = `残り ${p.filter(x => !seen.includes(x.t)).length} / ${p.length}`; }
+function draw() {
+  const p = pool(); let fresh = p.filter(x => !seen.includes(x.t));
+  if (!fresh.length) { seen = seen.filter(t => !p.some(x => x.t === t)); save(seen); fresh = p; }
+  return fresh[Math.floor(Math.random() * fresh.length)];
+}
+function paint(h) { $("cat").textContent = nameOf[h.item.c]; $("no").textContent = "No." + h.no; $("topic").textContent = h.item.t; }
+function show(h, push) {
+  if (push) { history = history.slice(0, cursor + 1); history.push(h); cursor = history.length - 1; if (!seen.includes(h.item.t)) { seen.push(h.item.t); save(seen); } }
+  const topic = $("topic");
+  if (reduced) paint(h); else { topic.classList.add("fade"); setTimeout(() => { paint(h); topic.classList.remove("fade"); }, 180); }
+  $("back").disabled = cursor <= 0;
+  $("hist").hidden = history.length < 2;
+  $("histlist").innerHTML = history.map((x, i) => `<li><button type="button" data-i="${i}" aria-current="${i === cursor}">${x.item.t}</button></li>`).join("");
+  updateLeft();
+}
+$("histlist").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; cursor = +b.dataset.i; show(history[cursor], false); });
+const next = () => { no += 1; show({ item: draw(), no }, true); };
+$("next").addEventListener("click", next);
+$("back").addEventListener("click", () => { if (cursor > 0) { cursor -= 1; show(history[cursor], false); } });
+$("reset").addEventListener("click", () => { seen = []; save(seen); updateLeft(); $("reset").textContent = "リセットしました"; setTimeout(() => $("reset").textContent = "出た話題をリセット", 1600); });
+document.addEventListener("keydown", e => {
+  if (e.code !== "Space" || e.repeat || e.target.closest("button, input, textarea, select, a")) return;
+  e.preventDefault(); next();
+});
+
+// 開いた時点で1つ目の話題が出ている状態にする
+const first = { item: ALL[0], no: 1 };
+history = [first]; cursor = 0;
+if (!seen.includes(first.item.t)) { seen.push(first.item.t); save(seen); }
+paint(first); updateLeft();
+})();
+</script>
+
+<script>
+// ホーム画面に追加したとき、電波がなくても開けるようにする
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>

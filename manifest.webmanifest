@@ -1,0 +1,15 @@
+{
+  "name": "オンランチ食券機",
+  "short_name": "オンランチ",
+  "description": "ボタンを押すたびにオンランチの話題が1つ出る、全60問・5メニューの話題アプリ。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#7724EB",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
