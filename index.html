@@ -46,6 +46,8 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 
 .next { font-family: var(--font); font-size: 17px; font-weight: 700; cursor: pointer; border: none; border-radius: 12px; padding: 15px 16px; background: var(--accent); color: var(--accent-fg); }
 .next:hover { filter: brightness(1.07); }
+.next:disabled { opacity: .35; cursor: default; filter: none; }
+.topic.wait { font-size: 17px; font-weight: 500; color: var(--sub); }
 .next:active { transform: translateY(1px); }
 .row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--sub); margin-top: -8px; }
 .row .links { display: flex; gap: 18px; }
@@ -128,14 +130,13 @@ const KEY = "onlunch-kenbaiki.seen.v1";
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
 const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} };
 let seen = load(), filter = "all", history = [], cursor = -1, no = 1;
-const MKEY = "onlunch-kenbaiki.mode.v1";
-let mode = (() => { try { return MODES[localStorage.getItem(MKEY)] ? localStorage.getItem(MKEY) : "fun"; } catch (e) { return "fun"; } })();
+let mode = null;
 let ALL = [], nameOf = {};
 const $ = id => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function setMode(k) {
-  mode = k; filter = "all"; try { localStorage.setItem(MKEY, k); } catch (e) {}
+  mode = k; filter = "all";
   const M = MODES[k];
   ALL = M.menu.flatMap(m => M.topics[m.k].map(t => ({ t, c: m.k })));
   nameOf = Object.fromEntries(M.menu.map(m => [m.k, m.name]));
@@ -144,7 +145,7 @@ function setMode(k) {
 }
 $("modes").addEventListener("click", e => {
   const b = e.target.closest(".mode"); if (!b || b.dataset.m === mode) return;
-  setMode(b.dataset.m); history = []; cursor = -1; no = 0; next();
+  setMode(b.dataset.m); history = []; cursor = -1; no = 0; $("next").disabled = false; next();
 });
 
 const pool = () => ALL.filter(x => filter === "all" || x.c === filter);
@@ -154,7 +155,7 @@ function draw() {
   if (!fresh.length) { seen = seen.filter(t => !p.some(x => x.t === t)); save(seen); fresh = p; }
   return fresh[Math.floor(Math.random() * fresh.length)];
 }
-function paint(h) { $("cat").textContent = nameOf[h.item.c]; $("no").textContent = "No." + h.no; $("topic").textContent = h.item.t; }
+function paint(h) { $("topic").classList.remove("wait"); $("cat").textContent = nameOf[h.item.c]; $("no").textContent = "No." + h.no; $("topic").textContent = h.item.t; }
 function show(h, push) {
   if (push) { history = history.slice(0, cursor + 1); history.push(h); cursor = history.length - 1; if (!seen.includes(h.item.t)) { seen.push(h.item.t); save(seen); } }
   const topic = $("topic");
@@ -165,7 +166,7 @@ function show(h, push) {
   updateLeft();
 }
 $("histlist").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; cursor = +b.dataset.i; show(history[cursor], false); });
-const next = () => { no += 1; show({ item: draw(), no }, true); };
+const next = () => { if (!mode) return; no += 1; show({ item: draw(), no }, true); };
 $("next").addEventListener("click", next);
 $("back").addEventListener("click", () => { if (cursor > 0) { cursor -= 1; show(history[cursor], false); } });
 $("reset").addEventListener("click", () => { seen = []; save(seen); updateLeft(); $("reset").textContent = "リセットしました"; setTimeout(() => $("reset").textContent = "出た話題をリセット", 1600); });
@@ -174,12 +175,12 @@ document.addEventListener("keydown", e => {
   e.preventDefault(); next();
 });
 
-// 開いた時点で1つ目の話題が出ている状態にする
-setMode(mode);
-const first = { item: ALL[0], no: 1 };
-history = [first]; cursor = 0;
-if (!seen.includes(first.item.t)) { seen.push(first.item.t); save(seen); }
-paint(first); updateLeft();
+// 開いた時点ではどちらも選ばず、選んだら1つ目の話題を出す
+$("modes").innerHTML = Object.entries(MODES).map(([key, x]) => `<button class="mode" type="button" data-m="${key}" aria-pressed="false">${x.name}</button>`).join("");
+$("modelead").textContent = "まず、どちらの話題にするかを選んでください。";
+$("cat").textContent = ""; $("no").textContent = "";
+$("topic").textContent = "上のボタンを押すと、話題が出ます"; $("topic").classList.add("wait");
+$("next").disabled = true;
 })();
 </script>
 
