@@ -180,7 +180,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   <section class="game" id="game" aria-label="お弁当キャッチ">
     <div class="ghead"><h2>お弁当キャッチ</h2><span class="gscore" id="gscore"></span></div>
-    <p class="grule">おかずをお弁当箱で受け止める。ピーマンを取るか、おかずを落とすと1ミス。3ミスで終了。指でなぞるか、← → キーで動かす。</p>
+    <p class="grule">おかずをお弁当箱で受け止める。ピーマンを取るか、おかずを落とすと1ミス。3ミスで終了。途中から、ゆれながら落ちてくるものも出てくる。指でなぞるか、← → キーで動かす。</p>
     <div class="gbox">
       <canvas id="gcv" aria-label="ゲーム画面"></canvas>
       <div class="gover" id="gover">
@@ -343,23 +343,28 @@ function drawBox() {
   ctx.fillStyle = "#E9C46A"; ctx.fillRect(x + 4, y + 8, w / 2 - 12, 18);
 }
 function drawIdle() {
-  ctx.clearRect(0, 0, W, H); box = { x: W / 2, w: Math.max(76, W * .17) };
+  ctx.clearRect(0, 0, W, H); box = { x: W / 2, w: Math.max(64, W * .14) };
   ctx.font = "34px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   [["🍙", .2, .25], ["🍗", .45, .15], ["🫑", .7, .3], ["🍤", .85, .12], ["🥚", .35, .45]].forEach(([e, x, y]) => ctx.fillText(e, W * x, H * y));
   drawBox();
 }
 function hud() { $("gscore").textContent = `${score} 点　ミス ${"●".repeat(miss)}${"○".repeat(3 - miss)}`; }
 function start() {
-  size(); box = { x: W / 2, w: Math.max(76, W * .17) };
+  size(); box = { x: W / 2, w: Math.max(64, W * .14) };
   items = []; pops = []; score = 0; miss = 0; t = 0; combo = 0; spawnIn = 0.4; lastNew = -1;
   $("gover").hidden = true; playing = true; hud(); last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
 }
 function spawn() {
-  const lvl = Math.min(t / 60, 1);
-  const bad = Math.random() < .18 + lvl * .14, gold = !bad && Math.random() < .04;
+  // 40秒で1段目の最高速、そのあとも80秒までじわじわ上がり続ける
+  const lvl = Math.min(t / 40, 1) + Math.min(Math.max(t - 40, 0) / 40, 1) * .6;
+  const bad = Math.random() < .24 + lvl * .16, gold = !bad && Math.random() < .035;
   const it = bad ? { e: "🫑", p: 0, bad: true } : gold ? { e: "🍱", p: 100, gold: true } : GOOD[Math.floor(Math.random() * GOOD.length)];
-  items.push({ ...it, x: 24 + Math.random() * (W - 48), y: -20, v: 110 + lvl * 220 + Math.random() * 60, r: (Math.random() - .5) * 2, a: 0 });
-  spawnIn = Math.max(.32, 1.0 - lvl * .65) * (.7 + Math.random() * .6);
+  const v = (150 + lvl * 300 + Math.random() * 80) * (gold ? 1.5 : it.bad && Math.random() < .3 ? 1.35 : 1);
+  // 15秒を過ぎると、左右にゆれながら落ちてくるものが混ざる
+  const sway = t > 15 && Math.random() < Math.min(.15 + lvl * .3, .55) ? 40 + Math.random() * 50 : 0;
+  const x0 = 24 + Math.random() * (W - 48);
+  items.push({ ...it, x0, x: x0, y: -20, v, sway, ph: Math.random() * 6.3, r: (Math.random() - .5) * 2, a: 0 });
+  spawnIn = Math.max(.2, .8 - lvl * .4) * (.6 + Math.random() * .7);
 }
 function loop(now) {
   const dt = Math.min((now - last) / 1000, .05); last = now; t += dt;
@@ -370,6 +375,7 @@ function loop(now) {
   const top = H - 46;
   for (const it of items) {
     it.y += it.v * dt; it.a += it.r * dt;
+    if (it.sway) it.x = Math.max(16, Math.min(W - 16, it.x0 + Math.sin(it.y / 45 + it.ph) * it.sway));
     if (!it.done && it.y >= top - 6 && it.y <= top + 16 && Math.abs(it.x - box.x) < box.w / 2 + 6) {
       it.done = true;
       if (it.bad) { miss++; combo = 0; pops.push({ x: it.x, y: top - 20, s: "うっ…", c: "#2E7D32", t: 0 }); }
