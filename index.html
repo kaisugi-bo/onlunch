@@ -93,17 +93,36 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .stage.on::before { animation: spin 12s linear infinite; }
 .stage.on .flash { animation: flash .45s .3s ease-out both; }
 .stage.on .q { animation: slamq .6s cubic-bezier(.2,1.5,.4,1) both; }
+/* Lv.MAX は宇宙。星が光速で流れ、遠くの惑星を背に、質問が奥から浮かび上がる */
+.stage .space { display: none; position: absolute; inset: 0; pointer-events: none; }
+.stage.lv3 { background: radial-gradient(ellipse at 50% 45%, #2A1460 0%, #0B0620 45%, #000000 80%); }
+.stage.lv3::before { display: none; }
+.stage.lv3 .sfx, .stage.lv3 .flash { display: none; }
+.stage.lv3 .space { display: block; }
+.stars { position: absolute; inset: 0; -webkit-mask: radial-gradient(circle, transparent 0 16vmin, #000 34vmin); mask: radial-gradient(circle, transparent 0 16vmin, #000 34vmin); }
+.stars span { position: absolute; left: 50%; top: 50%; width: 3px; height: 2px; border-radius: 2px; background: #FFFFFF; opacity: 0; transform-origin: 0 50%;
+  transform: rotate(var(--a)) translateX(2vmax); animation: warp var(--s) var(--d) cubic-bezier(.55,0,1,.6) infinite; }
+@keyframes warp { 0% { opacity: 0; transform: rotate(var(--a)) translateX(2vmax) scaleX(1); } 15% { opacity: .9; } 100% { opacity: 1; transform: rotate(var(--a)) translateX(75vmax) scaleX(26); } }
+.nebula { position: absolute; inset: -20%; background: radial-gradient(circle at 25% 30%, rgba(251,79,222,.28), transparent 35%), radial-gradient(circle at 75% 70%, rgba(80,170,255,.25), transparent 40%); animation: drift 14s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate(-4%, 3%) scale(1.08); } }
+.planet { position: absolute; right: -8vmin; bottom: -10vmin; width: 46vmin; height: 46vmin; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #C8A8FF 0%, #7724EB 35%, #2A0B66 70%, #0B0620 100%); box-shadow: 0 0 60px rgba(165,123,255,.45); animation: rise 1.4s .2s cubic-bezier(.2,.8,.2,1) both; }
+.planet::after { content: ""; position: absolute; left: -22%; top: 42%; width: 144%; height: 16%; border-radius: 50%; border: 3px solid rgba(255,200,97,.7); transform: rotate(-18deg); }
+@keyframes rise { from { transform: translate(20vmin, 20vmin); opacity: 0; } }
+.cosmos { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 28px); left: 0; right: 0; margin: 0; text-align: center; font-size: 13px; letter-spacing: .5em; color: rgba(200,220,255,.8); animation: fadein 1.2s .3s both; }
+@keyframes fadein { from { opacity: 0; letter-spacing: 1.4em; } }
+.stage.lv3 .q { text-shadow: 0 0 12px rgba(160,200,255,.9), 0 0 32px rgba(119,36,235,.9), 0 0 60px rgba(251,79,222,.6); }
 .stage.lv3.on .q { animation: none; }
-.stage.lv3.on .q span { animation: drop .5s cubic-bezier(.2,1.6,.4,1) both; animation-delay: calc(var(--i) * 55ms); }
-.stage.lv3.on .sfx { animation: sfx .5s cubic-bezier(.2,1.6,.4,1) both; animation-delay: var(--d); }
-.stage.lv3.on { animation: shake .4s calc(var(--n) * 55ms + .3s) linear 2 both; }
+.stage.lv3.on .q span { animation: emerge 1.1s cubic-bezier(.15,.9,.25,1) both; animation-delay: calc(var(--i) * 90ms + .4s); }
+@keyframes emerge { 0% { transform: scale(.02) translateZ(0); opacity: 0; filter: blur(8px); } 60% { opacity: 1; filter: blur(0); } 100% { transform: none; opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
 @keyframes slamq { 0% { transform: scale(5) rotate(-10deg); opacity: 0; filter: blur(6px); } 60% { transform: scale(.9) rotate(2deg); opacity: 1; filter: none; } 100% { transform: none; } }
 @keyframes drop { 0% { transform: translateY(-120vh) rotate(-30deg) scale(2); opacity: 0; } 70% { transform: translateY(6px) rotate(4deg) scale(1); opacity: 1; } 100% { transform: none; opacity: 1; } }
 @keyframes sfx { 0% { opacity: 0; scale: 3; } 100% { opacity: 1; scale: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .card.slam, .stage.on, .stage.on::before, .stage.on .flash, .stage.on .q, .stage.lv3.on .q span, .stage.lv3.on .sfx { animation: none !important; }
+  .card.slam, .stage.on, .stage.on::before, .stage.on .flash, .stage.on .q, .stage.lv3.on .q span, .stage.lv3.on .sfx, .stars span, .nebula, .planet, .cosmos { animation: none !important; }
+  .stars span { opacity: .8; }
   .stage .sfx { opacity: 1; }
 }
 
@@ -152,6 +171,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <div class="stage" id="stage" hidden role="dialog" aria-modal="true" aria-label="話題">
   <div class="flash"></div>
   <span class="sfx a" style="--d:.15s">ドンッ</span><span class="sfx b" style="--d:.35s">ドドドド</span>
+  <div class="space" aria-hidden="true"><div class="nebula"></div><div class="stars" id="stars"></div><div class="planet"></div><p class="cosmos">宇宙からの問い</p></div>
   <p class="q" id="stageq"></p>
   <p class="tap">タップで閉じる</p>
 </div>
@@ -243,6 +263,8 @@ function openStage(text) {
     chars = chars.reduce((a, c) => { if (a.length && /^[\s、。，．！？!?」』）)]+$/.test(c)) a[a.length - 1] += c; else a.push(c); return a; }, []);
     chars.forEach((c, i) => { const sp = document.createElement("span"); sp.textContent = c; sp.style.setProperty("--i", i); q.appendChild(sp); });
     st.style.setProperty("--n", chars.length); st.classList.add("lv3");
+    if (!$("stars").childElementCount) $("stars").innerHTML = Array.from({ length: 140 }, () =>
+      `<span style="--a:${(Math.random() * 360).toFixed(1)}deg;--d:${(-Math.random() * 2).toFixed(2)}s;--s:${(0.9 + Math.random() * 1.4).toFixed(2)}s"></span>`).join("");
     try { navigator.vibrate && navigator.vibrate([60, 40, 120]); } catch (e) {}
   } else q.textContent = text;
   st.hidden = false; void st.offsetWidth; st.classList.add("on");
