@@ -56,10 +56,30 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .link:disabled { opacity: .4; cursor: default; text-decoration: none; }
 .left { font-variant-numeric: tabular-nums; }
 
-.hist h2 { margin: 0 0 4px; font-size: 12.5px; font-weight: 500; color: var(--sub); }
-.hist ol { list-style: none; margin: 0; padding: 0; }
-.hist li button { width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--line); padding: 8px 0; font-family: var(--font); font-size: 14px; color: var(--sub); cursor: pointer; }
-.hist li button:hover, .hist li button[aria-current="true"] { color: var(--fg); }
+
+/* お弁当キャッチ */
+.game { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 18px; }
+.ghead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.game h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.game h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--sub); }
+.gscore { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.grule { margin: 0; font-size: 12.5px; color: var(--sub); }
+.gbox { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--soft); }
+#gcv { display: block; width: 100%; height: 340px; touch-action: none; }
+.gover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; text-align: center; background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.gover[hidden] { display: none; }
+.gtitle { margin: 0; font-size: 17px; font-weight: 700; white-space: pre-line; }
+.gform { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.gform[hidden] { display: none; }
+.gform input { font-family: var(--font); font-size: 15px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); width: 10em; }
+.gbtn { font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; background: var(--bg); color: var(--fg); }
+.gbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-size: 16px; padding: 10px 28px; }
+.rank ol { list-style: none; margin: 6px 0 0; padding: 0; counter-reset: r; }
+.rank li { counter-increment: r; display: grid; grid-template-columns: 2.2em 1fr auto; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; font-variant-numeric: tabular-nums; }
+.rank li::before { content: counter(r) "位"; color: var(--sub); }
+.rank li.new { color: var(--accent); font-weight: 700; }
+.rank li.empty::before { content: ""; }
+.rank li.empty { color: var(--sub); }
 
 footer { font-size: 12.5px; color: var(--sub); }
 footer p { margin: 0; }
@@ -158,9 +178,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <span class="lv" id="lv" hidden></span>
   </div>
 
-  <section class="hist" id="hist" hidden>
-    <h2>この回で出た話題</h2>
-    <ol id="histlist"></ol>
+  <section class="game" id="game" aria-label="お弁当キャッチ">
+    <div class="ghead"><h2>お弁当キャッチ</h2><span class="gscore" id="gscore"></span></div>
+    <p class="grule">おかずをお弁当箱で受け止める。ピーマンを取るか、おかずを落とすと1ミス。3ミスで終了。指でなぞるか、← → キーで動かす。</p>
+    <div class="gbox">
+      <canvas id="gcv" aria-label="ゲーム画面"></canvas>
+      <div class="gover" id="gover">
+        <p class="gtitle" id="gtitle">ひとりずつ挑戦して、ランキングで競おう</p>
+        <form class="gform" id="gform" hidden><input id="gname" maxlength="12" placeholder="名前" autocomplete="off" aria-label="名前"><button type="submit" class="gbtn">ランキングに登録</button></form>
+        <button class="gbtn primary" id="gstart" type="button">スタート</button>
+      </div>
+    </div>
+    <div class="rank"><div class="ghead"><h3>今日のランキング</h3><button class="link" id="grclear" type="button">ランキングを消す</button></div><ol id="grank"></ol></div>
   </section>
 
   <footer>
@@ -235,11 +264,8 @@ function show(h, push) {
   const topic = $("topic");
   if (reduced) paint(h); else { topic.classList.add("fade"); setTimeout(() => { paint(h); topic.classList.remove("fade"); }, 180); }
   $("back").disabled = cursor <= 0;
-  $("hist").hidden = history.length < 2;
-  $("histlist").innerHTML = history.map((x, i) => `<li><button type="button" data-i="${i}" aria-current="${i === cursor}">${x.item.t}</button></li>`).join("");
   updateLeft();
 }
-$("histlist").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; cursor = +b.dataset.i; show(history[cursor], false); });
 
 // 演出の強化。押すたびに Lv が上がり、Lv.3 の次で元に戻る
 const BOOST = ["演出を強化する", "演出をさらに強化する", "演出を限界まで強化する", "演出を元に戻す"];
@@ -290,6 +316,119 @@ $("modelead").textContent = "まず、どちらの話題にするかを選んで
 $("cat").textContent = ""; $("no").textContent = "";
 $("topic").textContent = "上のボタンを押すと、話題が出ます"; $("topic").classList.add("wait");
 $("next").disabled = true;
+})();
+</script>
+
+<script>
+// お弁当キャッチ。降ってくるおかずを受け止める。ピーマンを取るか、おかずを落とすと1ミス
+(() => {
+const cv = document.getElementById("gcv"), ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+const GOOD = [{ e: "🍙", p: 10 }, { e: "🍗", p: 20 }, { e: "🥚", p: 10 }, { e: "🍤", p: 30 }, { e: "🍅", p: 10 }, { e: "🥩", p: 20 }];
+const RKEY = "onlunch-kenbaiki.rank.v1", NKEY = "onlunch-kenbaiki.name.v1";
+const loadR = () => { try { return JSON.parse(localStorage.getItem(RKEY)) || []; } catch (e) { return []; } };
+const saveR = v => { try { localStorage.setItem(RKEY, JSON.stringify(v)); } catch (e) {} };
+let W = 0, H = 0, box, items, score, miss, t, last, spawnIn, raf = 0, playing = false, keys = {}, lastNew = -1, combo, pops;
+
+function size() {
+  const r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+  W = r.width; H = r.height; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+  if (!playing) drawIdle();
+}
+function drawBox() {
+  const x = box.x, y = H - 46, w = box.w;
+  ctx.fillStyle = "#2B2B33"; ctx.beginPath(); ctx.roundRect(x - w / 2, y, w, 34, 7); ctx.fill();
+  ctx.fillStyle = "#C0392B"; ctx.fillRect(x - w / 2 + 4, y + 4, w - 8, 26);
+  ctx.fillStyle = "#F6E7C8"; ctx.fillRect(x - w / 2 + 8, y + 8, w / 2 - 12, 18);
+  ctx.fillStyle = "#E9C46A"; ctx.fillRect(x + 4, y + 8, w / 2 - 12, 18);
+}
+function drawIdle() {
+  ctx.clearRect(0, 0, W, H); box = { x: W / 2, w: Math.max(76, W * .17) };
+  ctx.font = "34px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  [["🍙", .2, .25], ["🍗", .45, .15], ["🫑", .7, .3], ["🍤", .85, .12], ["🥚", .35, .45]].forEach(([e, x, y]) => ctx.fillText(e, W * x, H * y));
+  drawBox();
+}
+function hud() { $("gscore").textContent = `${score} 点　ミス ${"●".repeat(miss)}${"○".repeat(3 - miss)}`; }
+function start() {
+  size(); box = { x: W / 2, w: Math.max(76, W * .17) };
+  items = []; pops = []; score = 0; miss = 0; t = 0; combo = 0; spawnIn = 0.4; lastNew = -1;
+  $("gover").hidden = true; playing = true; hud(); last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+}
+function spawn() {
+  const lvl = Math.min(t / 60, 1);
+  const bad = Math.random() < .18 + lvl * .14, gold = !bad && Math.random() < .04;
+  const it = bad ? { e: "🫑", p: 0, bad: true } : gold ? { e: "🍱", p: 100, gold: true } : GOOD[Math.floor(Math.random() * GOOD.length)];
+  items.push({ ...it, x: 24 + Math.random() * (W - 48), y: -20, v: 110 + lvl * 220 + Math.random() * 60, r: (Math.random() - .5) * 2, a: 0 });
+  spawnIn = Math.max(.32, 1.0 - lvl * .65) * (.7 + Math.random() * .6);
+}
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, .05); last = now; t += dt;
+  const sp = Math.max(320, W * .9);
+  if (keys.ArrowLeft) box.x -= sp * dt; if (keys.ArrowRight) box.x += sp * dt;
+  box.x = Math.max(box.w / 2, Math.min(W - box.w / 2, box.x));
+  if ((spawnIn -= dt) <= 0) spawn();
+  const top = H - 46;
+  for (const it of items) {
+    it.y += it.v * dt; it.a += it.r * dt;
+    if (!it.done && it.y >= top - 6 && it.y <= top + 16 && Math.abs(it.x - box.x) < box.w / 2 + 6) {
+      it.done = true;
+      if (it.bad) { miss++; combo = 0; pops.push({ x: it.x, y: top - 20, s: "うっ…", c: "#2E7D32", t: 0 }); }
+      else { combo++; const g = it.p + (combo >= 5 ? 10 : 0); score += g; pops.push({ x: it.x, y: top - 20, s: (it.gold ? "幕の内！" : "") + "+" + g + (combo >= 5 ? ` ${combo}連` : ""), c: it.gold ? "#D4A017" : "#7724EB", t: 0 }); }
+      hud();
+    } else if (!it.done && it.y > H + 20) { it.done = true; if (!it.bad) { miss++; combo = 0; pops.push({ x: it.x, y: H - 70, s: "落とした！", c: "#C0392B", t: 0 }); hud(); } }
+  }
+  items = items.filter(it => !it.done);
+  ctx.clearRect(0, 0, W, H);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const it of items) { ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.a); ctx.font = (it.gold ? 40 : 32) + "px serif"; ctx.fillText(it.e, 0, 0); ctx.restore(); }
+  drawBox();
+  ctx.font = "bold 15px sans-serif";
+  pops = pops.filter(pp => (pp.t += dt) < .8);
+  for (const pp of pops) { ctx.globalAlpha = 1 - pp.t / .8; ctx.fillStyle = pp.c; ctx.fillText(pp.s, pp.x, pp.y - pp.t * 40); }
+  ctx.globalAlpha = 1;
+  if (miss >= 3) return end();
+  raf = requestAnimationFrame(loop);
+}
+function title(sc) { return sc >= 800 ? "伝説の料理長" : sc >= 500 ? "お弁当マイスター" : sc >= 300 ? "なかなかの腕前" : sc >= 120 ? "見習いさん" : "お腹ぺこぺこ"; }
+function end() {
+  playing = false; keys = {};
+  $("gtitle").textContent = `${score} 点\n称号「${title(score)}」`;
+  $("gform").hidden = score <= 0; $("gstart").textContent = "もう一回";
+  try { $("gname").value = localStorage.getItem(NKEY) || ""; } catch (e) {}
+  $("gover").hidden = false;
+  if (score > 0) $("gname").focus({ preventScroll: true });
+}
+function renderRank() {
+  const r = loadR();
+  $("grank").innerHTML = r.length ? r.map((x, i) => `<li class="${i === lastNew ? "new" : ""}"><span></span><span>${x.s} 点</span></li>`).join("") : `<li class="empty"><span>まだ記録がありません</span><span></span></li>`;
+  [...$("grank").querySelectorAll("li:not(.empty)")].forEach((li, i) => li.children[0].textContent = r[i].n);
+}
+$("gform").addEventListener("submit", e => {
+  e.preventDefault();
+  const n = $("gname").value.trim() || "名無しの料理人";
+  try { localStorage.setItem(NKEY, n); } catch (er) {}
+  const r = loadR(); const rec = { n, s: score, at: Date.now() }; r.push(rec);
+  r.sort((a, b) => b.s - a.s || a.at - b.at); const top = r.slice(0, 10); lastNew = top.indexOf(rec);
+  saveR(top); renderRank(); $("gform").hidden = true;
+  $("gtitle").textContent = lastNew >= 0 ? `${score} 点で ${lastNew + 1} 位に入った！` : `${score} 点。ランキング入りならず`;
+});
+$("gstart").addEventListener("click", start);
+let armed = false;
+$("grclear").addEventListener("click", e => {
+  if (!armed) { armed = true; e.target.textContent = "もう一度押すと消える"; setTimeout(() => { armed = false; e.target.textContent = "ランキングを消す"; }, 3000); return; }
+  saveR([]); lastNew = -1; armed = false; e.target.textContent = "ランキングを消す"; renderRank();
+});
+const moveTo = e => { if (!playing) return; const r = cv.getBoundingClientRect(); box.x = e.clientX - r.left; };
+cv.addEventListener("pointerdown", e => { moveTo(e); cv.setPointerCapture?.(e.pointerId); });
+cv.addEventListener("pointermove", e => { if (e.buttons || e.pointerType !== "mouse") moveTo(e); });
+// 遊んでいる間は矢印とスペースをゲームが使う（話題が進まないように）
+addEventListener("keydown", e => {
+  if (!playing) return;
+  if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); keys[e.code] = true; }
+}, true);
+addEventListener("keyup", e => { keys[e.code] = false; }, true);
+addEventListener("resize", size);
+size(); renderRank();
 })();
 </script>
 
