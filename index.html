@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>オンランチ食券機</title>
-<meta name="description" content="ボタンを押すたびにオンランチの話題が1つ出る、全24問・4メニューの話題アプリ。">
+<meta name="description" content="ボタンを押すたびにオンランチの話題が1つ出る、「お互いを知る」と「仕事の話」を切り替えて使える話題アプリ。">
 <meta name="theme-color" content="#7724EB">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -34,6 +34,10 @@ body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--fo
 h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .lead { margin: 2px 0 0; color: var(--sub); font-size: 13.5px; }
 
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--soft); border-radius: 12px; }
+.mode { font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer; border: none; border-radius: 9px; padding: 9px 8px; background: transparent; color: var(--sub); }
+.mode[aria-pressed="true"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.modelead { margin: -12px 0 0; font-size: 13px; color: var(--sub); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-family: var(--font); font-size: 13px; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--sub); border-radius: 999px; padding: 4px 13px; }
 .chip:hover { color: var(--fg); }
@@ -73,11 +77,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <p class="lead">ボタンを押すと話題が1つ出ます。ピンとこなければ、どんどん次へ。</p>
   </header>
 
+  <div class="modes" id="modes" role="group" aria-label="話題の種類"></div>
+  <p class="modelead" id="modelead"></p>
+
   <div class="chips" id="chips" aria-label="メニュー"></div>
 
   <article class="card" aria-live="polite">
-    <div class="meta"><span id="cat">日替わり</span><span id="no">No.1</span></div>
-    <p class="topic" id="topic">今日のお昼ごはん、何？</p>
+    <div class="meta"><span id="cat"></span><span id="no">No.1</span></div>
+    <p class="topic" id="topic"></p>
   </article>
 
   <button class="next" id="next" type="button">次の話題</button>
@@ -101,29 +108,51 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 <script>
 (() => {
-const MENU = [
+const MODES = {
+  fun: { name: "お互いを知る", lead: "仕事以外のことで、お互いを知るための話題です。", menu: [
   { k: "day", name: "日替わり" }, { k: "fav", name: "定番" }, { k: "if", name: "もしも" }, { k: "old", name: "むかし話" }
-];
-const TOPICS = {
-  day: ["最近いちばん笑ったこと", "最近変えた小さな習慣", "今年のうちにやっておきたいこと", "年末年始の過ごし方、もう決まってる？", "最近気になっているお店や場所", "最近知ったちょっとした雑学", "最近、自分をほめたいこと", "最近始めたこと、またはやめたこと", "この1週間でいちばんおいしかったもの"],
-  fav: ["何度でも聴いてしまう曲", "自分なりのストレス解消法",
-    "人に言うと驚かれる小さなこだわり", "地元の名物で、人に自慢したいもの", "自分の住んでいる地域の「あるある」", "理想の休日を時間割で言うと？"],
-  if: ["好きな作品の世界に1日だけ入れるなら、どれ？", "人生のテーマ曲を1曲選ぶなら？",
-    "タイムマシンに1回乗れるなら、過去と未来どっちに行く？", "1週間まるごと休みがもらえたら、何をする？", "魔法が1つだけ使えるなら、どんな魔法？"],
-  old: ["子どものころの得意技", "小学生のころの将来の夢", "子どものころ、よくやっていた遊び", "学生時代にハマっていたもの"]
+], topics: {
+    day: ["最近いちばん笑ったこと", "最近変えた小さな習慣", "今年のうちにやっておきたいこと", "年末年始の過ごし方、もう決まってる？", "最近気になっているお店や場所", "最近知ったちょっとした雑学", "最近、自分をほめたいこと", "最近始めたこと、またはやめたこと", "この1週間でいちばんおいしかったもの"],
+    fav: ["何度でも聴いてしまう曲", "自分なりのストレス解消法",
+      "人に言うと驚かれる小さなこだわり", "地元の名物で、人に自慢したいもの", "自分の住んでいる地域の「あるある」", "理想の休日を時間割で言うと？"],
+    if: ["好きな作品の世界に1日だけ入れるなら、どれ？", "人生のテーマ曲を1曲選ぶなら？",
+      "タイムマシンに1回乗れるなら、過去と未来どっちに行く？", "1週間まるごと休みがもらえたら、何をする？", "魔法が1つだけ使えるなら、どんな魔法？"],
+    old: ["子どものころの得意技", "小学生のころの将来の夢", "子どものころ、よくやっていた遊び", "学生時代にハマっていたもの"]
+  } },
+  work: { name: "仕事の話", lead: "社内の仕事のことを、少しまじめに話すための話題です。", menu: [
+    { k: "now", name: "いまの仕事" }, { k: "term", name: "今期のこと" }, { k: "help", name: "困りごと" }, { k: "like", name: "好きな仕事" }
+  ], topics: {
+    now: ["いまってどんな仕事をしてる？", "1日の流れをざっくり教えて", "最近いちばん時間を使っている仕事は？", "最近、手応えがあった仕事は？", "いま一緒に仕事をすることが多い人は？", "入社してから、仕事でいちばん変わったことは？"],
+    term: ["今期のいちばんのミッションは？", "今期これができたら最高、と思うことは？", "年内に片付けておきたい仕事は？", "いまいちばん追いかけている数字は？", "チームの今期の目標をひとことで言うと？", "今期の山場はいつ？"],
+    help: ["いま困っていることは？", "いちばん助けがほしいことは？", "ほかのチームに聞いてみたいことは？", "なくしたい作業や手間は？", "もっと早く知りたかった社内の情報は？", "AI に任せたいのに、まだ任せられていない仕事は？"],
+    like: ["仕事の中で好きな仕事は？", "時間を忘れてやれる仕事は？", "最近うれしかった、お客さんや同僚のひとこと", "ブリングアウトに入ってよかったと思った瞬間", "ほかのチームでやってみたい仕事は？", "自分の仕事で、もっと知ってほしいことは？"]
+  } }
 };
-const ALL = MENU.flatMap(m => TOPICS[m.k].map(t => ({ t, c: m.k })));
-const nameOf = Object.fromEntries(MENU.map(m => [m.k, m.name]));
 
 // 出た話題はこの端末にだけ覚えておく（使えなければ覚えずに動く）
 const KEY = "onlunch-kenbaiki.seen.v1";
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
 const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} };
 let seen = load(), filter = "all", history = [], cursor = -1, no = 1;
+const MKEY = "onlunch-kenbaiki.mode.v1";
+let mode = (() => { try { return MODES[localStorage.getItem(MKEY)] ? localStorage.getItem(MKEY) : "fun"; } catch (e) { return "fun"; } })();
+let ALL = [], nameOf = {};
 const $ = id => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-$("chips").innerHTML = [{ k: "all", name: "ぜんぶ" }, ...MENU].map(m => `<button class="chip" type="button" data-k="${m.k}" aria-pressed="${m.k === filter}">${m.name}</button>`).join("");
+function setMode(k) {
+  mode = k; filter = "all"; try { localStorage.setItem(MKEY, k); } catch (e) {}
+  const M = MODES[k];
+  ALL = M.menu.flatMap(m => M.topics[m.k].map(t => ({ t, c: m.k })));
+  nameOf = Object.fromEntries(M.menu.map(m => [m.k, m.name]));
+  $("modes").innerHTML = Object.entries(MODES).map(([key, x]) => `<button class="mode" type="button" data-m="${key}" aria-pressed="${key === k}">${x.name}</button>`).join("");
+  $("modelead").textContent = M.lead;
+  $("chips").innerHTML = [{ k: "all", name: "ぜんぶ" }, ...M.menu].map(m => `<button class="chip" type="button" data-k="${m.k}" aria-pressed="${m.k === filter}">${m.name}</button>`).join("");
+}
+$("modes").addEventListener("click", e => {
+  const b = e.target.closest(".mode"); if (!b || b.dataset.m === mode) return;
+  setMode(b.dataset.m); history = []; cursor = -1; no = 0; next();
+});
 $("chips").addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
   filter = b.dataset.k;
@@ -159,6 +188,7 @@ document.addEventListener("keydown", e => {
 });
 
 // 開いた時点で1つ目の話題が出ている状態にする
+setMode(mode);
 const first = { item: ALL[0], no: 1 };
 history = [first]; cursor = 0;
 if (!seen.includes(first.item.t)) { seen.push(first.item.t); save(seen); }
